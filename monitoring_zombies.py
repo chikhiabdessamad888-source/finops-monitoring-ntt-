@@ -3,17 +3,12 @@
 # Phase "Operate" du cycle FinOps / Étape 6 "Deployment & Monitoring"
 # Stage de première année - NTT DATA
 # =============================================================
-# Ce script illustre comment la détection des ressources "zombies"
-# peut être automatisée et exécutée périodiquement (ex: tâche planifiée
-# quotidienne), afin d'assurer une surveillance continue des coûts
-# plutôt qu'une analyse ponctuelle unique.
-# =============================================================
 
 import pandas as pd
 from datetime import datetime
 
 # -------------------------------------------------------------
-# Paramètres de la règle métier (identiques à l'analyse initiale)
+# Paramètres de la règle métier
 # -------------------------------------------------------------
 SEUIL_COUT_HORAIRE = 1.5       # euros / heure
 SEUIL_CPU_PCT = 15             # pourcentage d'utilisation CPU
@@ -21,8 +16,23 @@ SEUIL_ALERTE_ECONOMIE = 50000  # seuil (€) déclenchant une alerte "critique"
 
 
 def charger_donnees(chemin_csv):
-    """Charge le dernier export de données de consommation cloud."""
-    df = pd.read_csv(chemin_csv)
+    """Charge l'export de données cloud sans en-tête et nomme les colonnes."""
+    # Noms officiels des colonnes du dataset FinOps
+    noms_colonnes = [
+        "Resource_ID", 
+        "Region", 
+        "Cloud_Provider", 
+        "Status", 
+        "Resource_Type", 
+        "Creation_Date", 
+        "Hourly_Cost", 
+        "CPU_Utilization_Pct", 
+        "Projected_Monthly_Spend", 
+        "Is_Zombie"
+    ]
+    
+    # Chargement en ignorant la première ligne parasite s'il y en a une, ou en assignant les noms
+    df = pd.read_csv(chemin_csv, header=None, names=noms_colonnes, skiprows=1)
     df["Creation_Date"] = pd.to_datetime(df["Creation_Date"])
     return df
 
@@ -34,8 +44,7 @@ def detecter_ressources_zombies(df, seuil_cout=SEUIL_COUT_HORAIRE, seuil_cpu=SEU
 
 
 def generer_rapport_alerte(zombies):
-    """Construit un message d'alerte synthétique, prêt à être envoyé
-    par email ou par webhook (Slack, Teams) en conditions réelles."""
+    """Construit un message d'alerte synthétique."""
     horodatage = datetime.now().strftime("%Y-%m-%d %H:%M")
     nb = len(zombies)
     economie = zombies["Projected_Monthly_Spend"].sum()
@@ -60,24 +69,22 @@ def generer_rapport_alerte(zombies):
 
 
 def envoyer_alerte(message):
-    """Point d'intégration pour une notification réelle.
-    En environnement de production, cette fonction enverrait le message
-    par email (smtplib) ou vers un canal Slack/Teams (requests + webhook).
-    Dans le cadre de ce projet, l'alerte est affichée en console et
-    journalisée dans un fichier local."""
+    """Affiche et journalise l'alerte."""
     print(message)
     with open("journal_alertes_finops.log", "a", encoding="utf-8") as f:
         f.write(message + "\n" + "=" * 55 + "\n")
 
 
 def executer_cycle_surveillance(chemin_csv="dataset_finops_powerbi (1).csv"):
-    """Point d'entrée du script : à exécuter périodiquement
-    (ex: tâche planifiée quotidienne ou hebdomadaire)."""
+    """Point d'entrée du script de surveillance."""
     df = charger_donnees(chemin_csv)
     zombies = detecter_ressources_zombies(df)
     message = generer_rapport_alerte(zombies)
     envoyer_alerte(message)
 
+
+if __name__ == "__main__":
+    executer_cycle_surveillance()
 
 if __name__ == "__main__":
     executer_cycle_surveillance()
