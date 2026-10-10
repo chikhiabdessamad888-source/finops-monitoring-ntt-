@@ -70,7 +70,7 @@ def envoyer_alerte(message):
         f.write(message + "\n" + "=" * 55 + "\n")
 
 
-def executer_cycle_surveillance(chemin_csv="dataset_finops_powerbi.csv"):
+def executer_cycle_surveillance(chemin_csv="dataset_finops_powerbi (1).csv"):
     """Point d'entrée du script : à exécuter périodiquement
     (ex: tâche planifiée quotidienne ou hebdomadaire)."""
     df = charger_donnees(chemin_csv)
